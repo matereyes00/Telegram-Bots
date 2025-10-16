@@ -6,6 +6,28 @@ RULES_TEXT = """
 ## GAME TITLE
 Sea Salt & Paper
 
+## COMPONENTS
+58 cards, 6 game aids, a rulebook.
+- 4 mermaid cards
+
+**Collector Cards**
+- 5 octopus cards
+- 6 shell cards
+- 3 penguin cards 
+- 2 sailor cards
+
+**Duo Cards**
+- 7 fish cards
+- 8 boat cards
+- 9 crab cards
+- 5 shark cards and swimmer cards
+
+**Point Multiplier cards**
+- 1 lighthouse card
+- 1 shoal of fish card
+- 1 penguin colony card
+- 1 captain card
+
 ## GAME OBJECTIVE
 Be the first player to reach the required number of points to win the game. The game is played over several rounds.
 - **2 players:** 40 points
@@ -39,7 +61,8 @@ When a player with at least 7 points ends the round, they reveal their hand.
 
 ### If you announce "LAST CHANCE"
 You are betting that you will have the highest score.
-- All other players get one final turn.
+- Your hand is protected from attacks.
+- All other players get one final turn. (take a card and play cards)
 - After their turns, all scores are calculated.
 - **If your score is HIGHEST (or tied for highest):** You win the bet!
     - You score points for your cards **PLUS** a Color Bonus.

@@ -104,10 +104,52 @@ def calculate_score(card_text: str):
 
     # --- Format final response ---
     if not score_breakdown:
-        return "I couldn't find any scorable cards in your message. Try again!", {}
+        return "I couldn't find any scorable cards in your message. Try again! If you were trying to score a mermaid card, do it under /color_bonus. A Mermaid card's only role in scoring is to act as a key that unlocks your ability to claim a color bonus. The points from the bonus come from your colored cards, not from the Mermaid itself.", {}
         
     response_text = "Here's your score breakdown:\n"
     response_text += "\n".join(f"• {item}" for item in score_breakdown)
     response_text += f"\n\n**Total Score: {total_score}**"
     
     return response_text, card_counts
+
+def calculate_color_bonus(card_text: str):
+    """Parses a string of colors and mermaids to calculate the color bonus."""
+    
+    pattern = re.compile(r"(\d+)\s+([a-zA-Z]+)")
+    matches = pattern.findall(card_text.lower())
+
+    if not matches:
+        # Return plain text with no backslashes
+        return "Please list your cards by color count. \nExample: `/color-bonus 4 blue, 3 pink, 1 mermaid`"
+
+    mermaid_count = 0
+    color_counts = []
+
+    for count_str, name in matches:
+        count = int(count_str)
+        if "mermaid" in name:
+            mermaid_count = count
+        else:
+            color_counts.append(count)
+    
+    if mermaid_count == 0:
+        return "You need at least **1 Mermaid** to score a color bonus."
+
+    color_counts.sort(reverse=True)
+    groups_to_score = min(mermaid_count, len(color_counts))
+    
+    if groups_to_score == 0:
+        return f"You have **{mermaid_count} Mermaid(s)** but no colors listed. Your bonus is 0."
+
+    final_scores = color_counts[:groups_to_score]
+    total_bonus = sum(final_scores)
+
+    breakdown = " + ".join(map(str, final_scores))
+    # This string now returns plain text with parentheses
+    response = (
+        f"With **{mermaid_count} Mermaid(s)**, you score your top **{groups_to_score}** color group(s).\n"
+        f"Calculation: {breakdown}\n\n"
+        f"**Total Color Bonus: {total_bonus}**"
+    )
+    
+    return response

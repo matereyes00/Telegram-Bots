@@ -10,7 +10,7 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from game_logic import calculate_score # <-- Import the new function
+from game_logic import calculate_score, calculate_color_bonus
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +71,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if not answer or not str(answer).strip():
             raise ValueError("Empty response from model")
         
-        escaped_answer = escape_markdown(answer) 
-
+        final_text = escape_markdown(str(answer))
         await context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             message_id=thinking_message.message_id,
-            text=escaped_answer,
+            text=final_text,
             parse_mode=ParseMode.MARKDOWN_V2 # <-- Add this line
         )
 
@@ -94,7 +93,26 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"An error occurred: {context.error}")
 
 
-# --- Bot setup function ---
+async def color_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Calculates the color bonus for a list of cards."""
+    user_input = update.message.text.partition(' ')[2]
+
+    if not user_input:
+        # We still manually escape the help text here for simplicity
+        example_text = "Please list your cards by color count\. \nExample: `/color\-bonus 4 blue, 3 pink, 1 mermaid`"
+        await update.message.reply_text(text=example_text, parse_mode=ParseMode.MARKDOWN_V2)
+        return
+
+    # Get the plain text response from the logic function
+    response_text = calculate_color_bonus(user_input)
+    
+    # Escape the entire response before sending
+    escaped_response = escape_markdown(response_text)
+
+    await update.message.reply_text(
+        text=escaped_response, # Use the safely escaped text
+        parse_mode=ParseMode.MARKDOWN_V2
+    )
 
 def setup_telegram_bot(conversation_chain):
     """Initializes and runs the Telegram bot."""
@@ -110,6 +128,7 @@ def setup_telegram_bot(conversation_chain):
     # Register command and message handlers
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler('score', score)) # <-- Add this line
+    app.add_handler(CommandHandler('color_bonus', color_bonus)) # <-- Add this line
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_error_handler(error_handler)
 
