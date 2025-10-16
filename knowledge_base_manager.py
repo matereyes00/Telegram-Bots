@@ -1,5 +1,6 @@
 import os
 import logging
+from dotenv import load_dotenv # <-- Add this import
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
@@ -8,11 +9,9 @@ from langchain.memory import ConversationBufferMemory
 from langchain.docstore.document import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
+load_dotenv() # <-- Add this line to load the .env file
+
 logger = logging.getLogger(__name__)
-
-# --- Step 1: Load Google API key from environment ---
-os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
-
 
 # --- Step 2: Set up the FAISS knowledge base ---
 def setup_knowledge_base(game_rules_text: str):
