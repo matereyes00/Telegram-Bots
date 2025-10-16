@@ -10,6 +10,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Forcing a fresh build on Railway
 def main():
     logger.info("Initializing knowledge base...")
 
