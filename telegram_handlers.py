@@ -11,6 +11,7 @@ from telegram.ext import (
     filters,
 )
 from game_logic import calculate_score, calculate_color_bonus
+from knowledge_base_manager import get_conversation_chain
 
 logger = logging.getLogger(__name__)
 
@@ -19,8 +20,6 @@ def escape_markdown(text: str) -> str:
     escape_chars = r'_*[]()~`>#+-=|{}.!'
     return re.sub(f'([{re.escape(escape_chars)}])', r'\\\1', text)
 
-
-# --- Command handlers ---
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Greets the user and tells them the bot is ready."""
@@ -39,16 +38,16 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles questions from the user."""
-    user_question = update.message.text
-
+    # --- LAZY INITIALIZATION ---
+    # Check if the chain exists; if not, create it now.
     if "conversation_chain" not in context.application.bot_data:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text="Sorry, my knowledge base isn't loaded correctly. Please try restarting me."
-        )
-        return
-
+        vectorstore = context.application.bot_data["vectorstore"]
+        context.application.bot_data["conversation_chain"] = get_conversation_chain(vectorstore)
+        logger.info("Conversation chain initialized on first use.")
+    
     conversation_chain = context.application.bot_data["conversation_chain"]
+    user_question = update.message.text
+    
     thinking_message = await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text="🤔 Thinking..."
@@ -56,8 +55,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = await conversation_chain.ainvoke({"question": user_question})
-
-        # Try multiple fallback fields
+        # ... (rest of your function is the same)
         answer = (
             getattr(response, "content", None)
             or response.get("answer")
@@ -67,18 +65,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 else None
             )
         )
-
         if not answer or not str(answer).strip():
             raise ValueError("Empty response from model")
         
         final_text = escape_markdown(str(answer))
+
         await context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             message_id=thinking_message.message_id,
             text=final_text,
-            parse_mode=ParseMode.MARKDOWN_V2 # <-- Add this line
+            parse_mode=ParseMode.MARKDOWN_V2
         )
-
     except Exception as e:
         logger.error(f"Error during conversation chain invocation: {e}")
         await context.bot.edit_message_text(
@@ -114,7 +111,7 @@ async def color_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
-def setup_telegram_bot(conversation_chain):
+def setup_telegram_bot(vectorstore):
     """Initializes and runs the Telegram bot."""
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not bot_token:
@@ -123,7 +120,7 @@ def setup_telegram_bot(conversation_chain):
     app = ApplicationBuilder().token(bot_token).build()
 
     # Store the conversation chain in bot_data
-    app.bot_data["conversation_chain"] = conversation_chain
+    app.bot_data["vectorstore"] = vectorstore
 
     # Register command and message handlers
     app.add_handler(CommandHandler("start", start))
