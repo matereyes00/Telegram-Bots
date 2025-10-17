@@ -81,6 +81,18 @@ def calculate_score(card_text: str):
                 total_score += pairs
                 score_breakdown.append(f"{pairs} pair(s) of {card.capitalize()}s: {pairs} pts")
 
+    # Shark + Swimmer combo (different from regular pairs)
+    # Shark + Swimmer combo (1 point per combination of different cards)
+    if "shark" in card_counts and "swimmer" in card_counts:
+        combos = min(card_counts["shark"], card_counts["swimmer"])
+        if combos > 0:
+            total_score += combos
+            score_breakdown.append(f"{combos} Shark+Swimmer combo(s): {combos} pts")
+    elif "shark" in card_counts or "swimmer" in card_counts:
+        # If player only has sharks OR swimmers (not both), no points
+        pass
+
+
     # 3. Multiplier Cards
     if "lighthouse" in card_counts and "boat" in card_counts:
         points = card_counts["lighthouse"] * card_counts["boat"]

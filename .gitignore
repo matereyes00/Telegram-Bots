@@ -1,3 +1,20 @@
-.env
+# Virtual Environment
 .venv/
+venv/
+env/
+.DS_Store
+
+# Python cache
+pycache/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment variables
+.env
+
+# IDE settings
+.idea/
+.vscode/
+
 testScript.py
