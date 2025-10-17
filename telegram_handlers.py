@@ -23,23 +23,17 @@ def escape_markdown(text: str) -> str:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Greets the user and tells them the bot is ready."""
-    # Define the text for the welcome message
     text = "Hello! I am the Game Master 🤖🎲\nAsk me anything about the rules of the current game!"
-    
-    # Escape the text before sending it
     escaped_text = escape_markdown(text)
-
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=escaped_text,  # <-- Use the escaped text variable here
+        text=escaped_text,
         parse_mode=ParseMode.MARKDOWN_V2
     )
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Handles questions from the user."""
-    # --- LAZY INITIALIZATION ---
-    # Check if the chain exists; if not, create it now.
     if "conversation_chain" not in context.application.bot_data:
         vectorstore = context.application.bot_data["vectorstore"]
         context.application.bot_data["conversation_chain"] = get_conversation_chain(vectorstore)
@@ -55,16 +49,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     try:
         response = await conversation_chain.ainvoke({"question": user_question})
-        # ... (rest of your function is the same)
-        answer = (
-            getattr(response, "content", None)
-            or response.get("answer")
-            or (
-                response.get("chat_history")[-1].content
-                if response.get("chat_history")
-                else None
-            )
-        )
+        answer = response.get("answer", "Sorry, I couldn't find an answer.")
         if not answer or not str(answer).strip():
             raise ValueError("Empty response from model")
         
@@ -78,10 +63,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
     except Exception as e:
         logger.error(f"Error during conversation chain invocation: {e}")
+        error_text = escape_markdown("⚠️ Sorry, I couldn’t generate a proper answer. Please try rephrasing your question.")
         await context.bot.edit_message_text(
             chat_id=update.effective_chat.id,
             message_id=thinking_message.message_id,
-            text="⚠️ Sorry, I couldn’t generate a proper answer. Please try rephrasing your question."
+            text=error_text,
+            parse_mode=ParseMode.MARKDOWN_V2,
         )
 
 
@@ -95,54 +82,24 @@ async def color_bonus(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_input = update.message.text.partition(' ')[2]
 
     if not user_input:
-        # We still manually escape the help text here for simplicity
-        example_text = "Please list your cards by color count\. \nExample: `/color\-bonus 4 blue, 3 pink, 1 mermaid`"
+        example_text = "Please list your cards by color count\\. \nExample: `/color\\-bonus 4 blue, 3 pink, 1 mermaid`"
         await update.message.reply_text(text=example_text, parse_mode=ParseMode.MARKDOWN_V2)
         return
 
-    # Get the plain text response from the logic function
     response_text = calculate_color_bonus(user_input)
-    
-    # Escape the entire response before sending
     escaped_response = escape_markdown(response_text)
-
     await update.message.reply_text(
-        text=escaped_response, # Use the safely escaped text
+        text=escaped_response,
         parse_mode=ParseMode.MARKDOWN_V2
     )
-
-def setup_telegram_bot(vectorstore):
-    """Initializes and runs the Telegram bot."""
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not bot_token:
-        raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set!")
-
-    app = ApplicationBuilder().token(bot_token).build()
-
-    # Store the conversation chain in bot_data
-    app.bot_data["vectorstore"] = vectorstore
-
-    # Register command and message handlers
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler('score', score)) # <-- Add this line
-    app.add_handler(CommandHandler('color_bonus', color_bonus)) # <-- Add this line
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_error_handler(error_handler)
-
-    logger.info("Bot is running...")
-    app.run_polling()
 
 
 async def score(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Calculates the score for a list of cards provided by the user."""
-    user_input = update.message.text.partition(' ')[2] # Get text after /score
+    user_input = update.message.text.partition(' ')[2]
 
     if not user_input:
-        error_text = "Please list your cards after the command\. \nExample: `/score 2 crabs, 4 shells`"
-        
-        # You don't need to escape this specific string since I've already
-        # manually escaped the period for you with a '\'.
-        # For any other text, always use the escape_markdown() function.
+        error_text = "Please list your cards after the command\\. \nExample: `/score 2 crabs, 4 shells`"
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=error_text,
@@ -152,9 +109,36 @@ async def score(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     response_text, _ = calculate_score(user_input)
     escaped_response = escape_markdown(response_text) 
-
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=escaped_response,
         parse_mode=ParseMode.MARKDOWN_V2
     )
+
+
+# --- KEY CHANGE 1: Function now accepts port and webhook_url ---
+def setup_telegram_bot(vectorstore, port: int, webhook_url: str):
+    """Initializes and runs the Telegram bot with webhooks."""
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        raise ValueError("TELEGRAM_BOT_TOKEN environment variable not set!")
+
+    app = ApplicationBuilder().token(bot_token).build()
+
+    app.bot_data["vectorstore"] = vectorstore
+
+    # Register handlers
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler('score', score))
+    app.add_handler(CommandHandler('color_bonus', color_bonus))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    app.add_error_handler(error_handler)
+
+    # --- KEY CHANGE 2: This command runs the bot in webhook mode ---
+    logger.info(f"Starting webhook server on 0.0.0.0:{port}")
+    app.run_webhook(
+        listen="0.0.0.0",
+        port=port,
+        webhook_url=webhook_url
+    )
+

@@ -1,8 +1,8 @@
+import os
 import logging
-from knowledge_base_manager import load_knowledge_base
+from knowledge_base_manager import load_vectorstore
 from telegram_handlers import setup_telegram_bot
 
-# Configure logging for clear output
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -10,22 +10,26 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 def main():
-    """
-    Main function to initialize and run the bot.
-    """
-    # Step 1: Load the pre-built knowledge base from disk.
-    # This is much faster than building it from scratch every time.
-    try:
-        vectorstore = load_knowledge_base()
-        logger.info("Knowledge base is ready.")
-    except FileNotFoundError as e:
-        logger.error(e)
-        logger.error("Exiting. Please make sure the vector store is created before running the bot.")
+    """Initializes and runs the bot."""
+    # Get environment variables
+    # Railway provides the PORT variable automatically.
+    port = int(os.environ.get('PORT', '8443'))
+    # You need to set WEBHOOK_URL in your Railway variables.
+    webhook_url = os.getenv("WEBHOOK_URL")
+    
+    if not webhook_url:
+        logger.error("WEBHOOK_URL environment variable not set!")
         return
 
-    # Step 2: Start the bot and pass the loaded vectorstore.
-    logger.info("Starting bot...")
-    setup_telegram_bot(vectorstore)
+    logger.info("Loading knowledge base from disk...")
+    # Load the pre-built vectorstore from the 'faiss_index' folder
+    vectorstore = load_vectorstore()
+    logger.info("Knowledge base is ready.")
+
+    logger.info(f"Starting bot on port {port} with webhook URL: {webhook_url}")
+    # Pass the vectorstore, port, and webhook URL to the bot setup
+    setup_telegram_bot(vectorstore, port, webhook_url)
 
 if __name__ == "__main__":
     main()
+
