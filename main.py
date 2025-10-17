@@ -15,7 +15,7 @@ def main():
     """Initializes and runs the bot."""
     # Get environment variables
     # Railway provides the PORT variable automatically.
-    port = int(os.environ.get('PORT', '8443'))
+    port = int(os.environ.get('PORT', '8080'))
     # You need to set WEBHOOK_URL in your Railway variables.
     webhook_url = os.getenv("WEBHOOK_URL")
     
