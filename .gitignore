@@ -17,4 +17,4 @@ pycache/
 .idea/
 .vscode/
 
-testScript.py
+getModels.py
