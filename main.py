@@ -2,7 +2,9 @@ import os
 import logging
 from knowledge_base_manager import load_vectorstore
 from telegram_handlers import setup_telegram_bot
+from dotenv import load_dotenv
 
+load_dotenv()
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
